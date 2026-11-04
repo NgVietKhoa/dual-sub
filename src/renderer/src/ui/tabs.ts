@@ -1,32 +1,42 @@
 import { $ } from './dom'
 import { renderFoot } from './transcriptPanel'
 
+type Tab = 'T' | 'V' | 'H'
+
+let current: Tab = 'T'
 let vocabCount = 0
+let watchedCount = 0
+
+/** Dòng chân của khung bên phải theo tab đang mở. */
+function renderTabFoot(): void {
+  if (current === 'T') return renderFoot()
+  $('footInfo').textContent = current === 'V' ? `${vocabCount} từ đã lưu` : `${watchedCount} video đã xem`
+}
 
 export function setVocabCount(n: number): void {
   vocabCount = n
   $('vCount').textContent = String(n)
-  if (!$('vList').hidden) renderFoot(n)
+  renderTabFoot()
 }
 
-/** Danh sách "Từ đã lưu" (Phase 4 sẽ đổ dữ liệu thật vào đây). */
-export function renderVocabList(): void {
-  $('vList').innerHTML =
-    '<div class="empty">Chưa có từ nào.<br>Bấm vào một từ trong ô “Câu đang nói” để tra nghĩa và lưu lại.</div>'
+export function setWatchedCount(n: number): void {
+  watchedCount = n
+  $('hCount').textContent = String(n)
+  renderTabFoot()
 }
 
-export function showTab(vocab: boolean): void {
-  $('tabT').setAttribute('aria-selected', String(!vocab))
-  $('tabV').setAttribute('aria-selected', String(vocab))
-  $('tList').hidden = vocab
-  $('vList').hidden = !vocab
-  $('tTools').hidden = vocab
-  renderFoot(vocab ? vocabCount : undefined)
+export function showTab(tab: Tab): void {
+  current = tab
+  for (const t of ['T', 'V', 'H'] as const) {
+    $(`tab${t}`).setAttribute('aria-selected', String(t === tab))
+    $(`${t.toLowerCase()}List`).hidden = t !== tab
+  }
+  $('tTools').hidden = tab !== 'T'
+  renderTabFoot()
 }
 
 export function initTabs(): void {
-  $('tabT').onclick = () => showTab(false)
-  $('tabV').onclick = () => showTab(true)
-  renderVocabList()
+  $('tabT').onclick = () => showTab('T')
+  $('tabV').onclick = () => showTab('V')
+  $('tabH').onclick = () => showTab('H')
 }
-

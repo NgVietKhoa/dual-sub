@@ -1,5 +1,5 @@
 import { parseVideoLink } from '@shared/videoId'
-import { $ } from './ui/dom'
+import { $, fmt } from './ui/dom'
 import { idxAt, lastLineStartedBy, state, type Line, type SubMode } from './ui/state'
 import { VideoPlayer } from './ui/player'
 import { toast } from './ui/toast'
@@ -27,14 +27,13 @@ import { initTabs } from './ui/tabs'
 import { initSettings } from './ui/settingsDialog'
 import { closeWordPopup, initWordPopup, showWordPopup } from './ui/wordPopup'
 import { addWord, initSavedWords, isWordSaved } from './ui/savedWords'
+import { initWatched, recordProgress, resumeTime } from './ui/watched'
 
 const player = new VideoPlayer($('ytHost'), {
   onPlayingChange(playing) {
     state.playing = playing
     if (playing && state.loop && state.loopIdx < 0) state.loopIdx = Math.max(0, idxAt(state.t))
-    renderPlaying()
-  },
-  onEnded() {
+    if (!playing) void recordProgress(true)
     renderPlaying()
   },
   onError(message) {
@@ -56,11 +55,11 @@ const player = new VideoPlayer($('ytHost'), {
       renderTime()
       renderFoot()
     }
+    void recordProgress(true)
   }
 })
 
-/** Phase 2 sẽ gọi hàm này khi có transcript. */
-export function setLines(lines: Line[]): void {
+function setLines(lines: Line[]): void {
   state.lines = lines
   state.idx = -1
   state.loopIdx = -1
@@ -106,8 +105,7 @@ function step(d: number): void {
   let cur = state.idx
   if (cur < 0) {
     cur = lastLineStartedBy(state.t)
-    if (d > 0) cur = Math.max(cur, -1)
-    else cur += 1
+    if (d < 0) cur += 1
   }
   let n = Math.min(L.length - 1, Math.max(0, cur + d))
   // Bấm "câu trước" khi đã nghe quá 1.5s → quay về đầu câu hiện tại
@@ -117,17 +115,12 @@ function step(d: number): void {
 }
 
 function toggleLoop(): void {
+  if (!state.loop && !state.lines.length) return toast('Chưa có phụ đề để lặp câu.')
   state.loop = !state.loop
   state.loopIdx = state.loop
     ? Math.max(0, state.idx >= 0 ? state.idx : lastLineStartedBy(state.t))
     : -1
   renderLoop()
-  if (state.loop && !state.lines.length) {
-    state.loop = false
-    state.loopIdx = -1
-    renderLoop()
-    return toast('Chưa có phụ đề để lặp câu.')
-  }
   toast(state.loop ? `Đang lặp câu ${state.loopIdx + 1}` : 'Đã tắt lặp câu')
 }
 
@@ -148,9 +141,13 @@ async function openVideo(link: string, startAt?: number): Promise<void> {
   if (!parsed) {
     return toast('Link chưa đúng dạng YouTube. Thử youtube.com/watch?v=…, youtu.be/… hoặc youtube.com/shorts/…', 4500)
   }
-  const startSeconds = startAt ?? parsed.startSeconds
+  void recordProgress(true) // lưu tiến độ video đang xem trước khi đổi
+  const resumeAt = startAt === undefined && !parsed.startSeconds ? resumeTime(parsed.videoId) : 0
+  const startSeconds = startAt ?? (resumeAt || parsed.startSeconds)
+  if (resumeAt) toast(`Xem tiếp từ ${fmt(resumeAt)}`)
   state.videoId = parsed.videoId
   state.title = ''
+  state.lang = ''
   state.t = startSeconds
   state.duration = 0
   state.playing = false
@@ -159,7 +156,6 @@ async function openVideo(link: string, startAt?: number): Promise<void> {
   $('stageTitle').hidden = true
   $('placeholder').hidden = true
   $('retryBtn').hidden = true
-  $('whisperBox').hidden = true
   void window.api.translateCancel()
   setLines([])
   renderTime()
@@ -176,7 +172,7 @@ async function openVideo(link: string, startAt?: number): Promise<void> {
   }
 }
 
-/** Phase 2: lấy phụ đề qua main process (YouTube.js) rồi đổ vào giao diện. */
+/** Lấy phụ đề qua main process (YouTube.js) rồi đổ vào giao diện. */
 async function loadCaptions(videoId: string): Promise<void> {
   const preferred = $<HTMLSelectElement>('srcLang').value
   const res = await window.api.loadCaptions(videoId, preferred)
@@ -185,25 +181,17 @@ async function loadCaptions(videoId: string): Promise<void> {
     state.emptyMsg = res.error.message
     setLines([])
     toast(res.error.message, 6000)
-    if (res.error.code === 'NO_CAPTIONS') {
-      $('whisperBox').hidden = false
-      $('whisperMsg').textContent = 'Video này không có phụ đề trên YouTube.'
-      $<HTMLButtonElement>('whisperBtn').disabled = false
-      $<HTMLButtonElement>('whisperBtn').textContent = 'Tạo phụ đề bằng Whisper (AI)'
-    } else {
-      $('whisperBox').hidden = true
-    }
     return
   }
-  $('whisperBox').hidden = true
   const d = res.data
-  state.emptyMsg = ''
-  if (!state.duration && d.duration) state.duration = d.duration
   if (d.title && !state.title) {
     state.title = d.title
     $('stageTitle').textContent = d.title
     $('stageTitle').hidden = false
   }
+  state.emptyMsg = ''
+  state.lang = d.lang
+  if (!state.duration && d.duration) state.duration = d.duration
   setDetectedLang(d.lang.split('-')[0])
   setSourceChip(
     d.kind === 'manual'
@@ -213,41 +201,6 @@ async function loadCaptions(videoId: string): Promise<void> {
   setLines(d.cues.map((c) => ({ s: c.start, e: c.end, en: c.text, vi: '' })))
   renderTime()
   void startTranslation(videoId)
-}
-
-async function handleWhisperTranscribe(): Promise<void> {
-  if (!state.videoId) return
-  const whisperBtn = $<HTMLButtonElement>('whisperBtn')
-  const status = await window.api.getAsrStatus()
-  if (!status.hasFfmpeg || !status.hasYtDlp || !status.hasWhisper || !status.hasModel) {
-    toast('Chưa đủ công cụ Whisper AI (yt-dlp, whisper.cpp hoặc model). Mở Cài đặt để xem chi tiết.', 6000)
-    $('settingsBtn').click()
-    return
-  }
-
-  whisperBtn.disabled = true
-  whisperBtn.textContent = 'Đang nhận dạng...'
-  $('whisperMsg').textContent = 'Đang khởi động Whisper AI...'
-
-  const res = await window.api.transcribeWithWhisper(state.videoId)
-  if (!res.ok) {
-    whisperBtn.disabled = false
-    whisperBtn.textContent = 'Thử lại bằng Whisper'
-    $('whisperMsg').textContent = res.error.message
-    toast(res.error.message, 6000)
-    return
-  }
-
-  const d = res.data
-  $('whisperBox').hidden = true
-  state.emptyMsg = ''
-  if (!state.duration && d.duration) state.duration = d.duration
-  setDetectedLang(d.lang.split('-')[0])
-  setSourceChip(`Phụ đề nhận dạng từ Whisper AI · ${d.langName}`)
-  setLines(d.cues.map((c) => ({ s: c.start, e: c.end, en: c.text, vi: '' })))
-  renderTime()
-  void startTranslation(state.videoId)
-  toast('Đã tạo phụ đề bằng Whisper AI thành công!')
 }
 
 async function startTranslation(videoId: string): Promise<void> {
@@ -278,6 +231,7 @@ function tick(): void {
     state.t = t
     setActive(idxAt(t))
     renderTime()
+    void recordProgress()
   }
   requestAnimationFrame(tick)
 }
@@ -328,16 +282,19 @@ export function startApp(): void {
     }
   })
 
+  void initWatched((v) => {
+    if (v.videoId !== state.videoId) void openVideo(v.videoId)
+    else if (!state.playing) player.play()
+  })
+  window.addEventListener('beforeunload', () => void recordProgress(true))
+
   onWordClick((w) => {
     const line = state.lines[w.lineIdx]
     if (!line) return
-    const srcLang = $<HTMLSelectElement>('srcLang').value
     void showWordPopup({
       word: w.word,
-      context: line.en,
-      videoId: state.videoId || '',
-      timestamp: line.s,
-      srcLang,
+      from: state.lang,
+      to: $<HTMLSelectElement>('dstLang').value,
       targetEl: w.el,
       isSaved: isWordSaved(w.word),
       onSave: async (def) => {
@@ -356,14 +313,6 @@ export function startApp(): void {
   $('retryBtn').onclick = () => {
     if (state.videoId) void startTranslation(state.videoId)
   }
-
-  $('whisperBtn').onclick = () => void handleWhisperTranscribe()
-
-  window.api.onAsrProgress((p) => {
-    if (p.videoId === state.videoId) {
-      $('whisperMsg').textContent = p.message
-    }
-  })
 
   window.api.onTranslateProgress((p) => {
     if (p.videoId !== state.videoId) return

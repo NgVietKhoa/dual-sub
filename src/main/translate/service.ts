@@ -8,7 +8,7 @@ import { DeepLProvider } from './deepl'
 import { GoogleProvider } from './google'
 import type { TranslationProvider } from './TranslationProvider'
 
-async function createProvider(): Promise<TranslationProvider> {
+export async function createProvider(): Promise<TranslationProvider> {
   const s = await getSecrets()
   if (s.provider === 'deepl') return new DeepLProvider(s.deeplKey)
   if (s.provider === 'claude') return new ClaudeProvider(s.claudeKey, s.claudeModel)

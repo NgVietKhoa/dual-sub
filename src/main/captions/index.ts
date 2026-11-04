@@ -36,7 +36,6 @@ export async function loadCaptions(videoId: string, preferredLang: string): Prom
         kind: t.kind === 'asr' ? 'asr' : 'manual',
         baseUrl: t.base_url
       }))
-      if (!tracks.length) throw new AppError('NO_CAPTIONS', 'Video này không có phụ đề.')
 
       const audioTracks = info.captions?.audio_tracks
       const defaultIdx = info.captions?.default_audio_track_index
@@ -55,8 +54,7 @@ export async function loadCaptions(videoId: string, preferredLang: string): Prom
         lang: track.lang,
         langName: track.name.replace(/\s*\(auto-generated\)/i, ''),
         kind: track.kind,
-        cues,
-        tracks: tracks.map(({ lang, name, kind }) => ({ lang, name, kind }))
+        cues
       }
     } catch (e) {
       // Lỗi nghiệp vụ (không có phụ đề, sai ngôn ngữ...) → dừng ngay, không đổi client

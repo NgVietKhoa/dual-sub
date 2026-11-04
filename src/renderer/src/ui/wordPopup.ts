@@ -4,35 +4,30 @@ import { toast } from './toast'
 
 export interface WordPopupOptions {
   word: string
-  context: string
-  videoId: string
-  timestamp: number
-  srcLang: string
+  /** Ngôn ngữ của từ và ngôn ngữ giải nghĩa */
+  from: string
+  to: string
   targetEl: HTMLElement
   isSaved: boolean
   onSave(def: WordDefinition): Promise<void>
 }
 
 let activeOptions: WordPopupOptions | null = null
+/** Kết quả tra của popup đang mở; null khi đang tra hoặc tra lỗi (không cho lưu). */
+let activeDef: WordDefinition | null = null
 
 export function initWordPopup(): void {
   const pop = $('pop')
   $('popClose').onclick = closeWordPopup
   $('popSave').onclick = async () => {
-    if (!activeOptions) return
+    if (!activeOptions || !activeDef) return
     const saveBtn = $<HTMLButtonElement>('popSave')
     saveBtn.disabled = true
     try {
-      await activeOptions.onSave({
-        word: $('popWord').textContent || activeOptions.word,
-        ipa: $('popIpa').textContent || undefined,
-        pos: $('popPos').textContent || undefined,
-        meaning: $('popMean').textContent || ''
-      })
-      saveBtn.textContent = 'Đã lưu'
+      await activeOptions.onSave(activeDef)
       toast(`Đã lưu “${activeOptions.word}”`)
       closeWordPopup()
-    } catch (e) {
+    } catch {
       toast('Lỗi khi lưu từ')
       saveBtn.disabled = false
     }
@@ -48,10 +43,12 @@ export function initWordPopup(): void {
 export function closeWordPopup(): void {
   $('pop').hidden = true
   activeOptions = null
+  activeDef = null
 }
 
 export async function showWordPopup(opts: WordPopupOptions): Promise<void> {
   activeOptions = opts
+  activeDef = null
   const pop = $('pop')
   const wordEl = $('popWord')
   const ipaEl = $('popIpa')
@@ -67,7 +64,7 @@ export async function showWordPopup(opts: WordPopupOptions): Promise<void> {
   meanEl.textContent = 'Đang tra nghĩa…'
 
   saveBtn.textContent = opts.isSaved ? 'Đã lưu' : 'Lưu từ'
-  saveBtn.disabled = opts.isSaved
+  saveBtn.disabled = true
 
   // Định vị popover
   pop.hidden = false
@@ -75,7 +72,7 @@ export async function showWordPopup(opts: WordPopupOptions): Promise<void> {
   const pw = pop.offsetWidth || 270
   const ph = pop.offsetHeight || 160
 
-  let left = Math.min(Math.max(16, r.left), window.innerWidth - pw - 16)
+  const left = Math.min(Math.max(16, r.left), window.innerWidth - pw - 16)
   let top = r.bottom + 8
   if (top + ph > window.innerHeight - 16) {
     top = r.top - ph - 8
@@ -83,31 +80,27 @@ export async function showWordPopup(opts: WordPopupOptions): Promise<void> {
   pop.style.left = `${left}px`
   pop.style.top = `${Math.max(16, top)}px`
 
-  // Gọi tra nghĩa từ
-  try {
-    const res = await window.api.lookupWord(opts.word, opts.srcLang)
-    if (activeOptions !== opts) return // Người dùng đã bấm từ khác
+  const res = await window.api.lookupWord(opts.word, opts.from, opts.to)
+  if (activeOptions !== opts) return // Người dùng đã bấm từ khác
 
-    if (!res.ok) {
-      meanEl.textContent = res.error.message
-      return
-    }
+  if (!res.ok) {
+    meanEl.textContent = res.error.message
+    return
+  }
 
-    const data = res.data
-    wordEl.textContent = data.word || opts.word
-    if (data.ipa) {
-      ipaEl.textContent = data.ipa
-      ipaEl.hidden = false
-    }
-    if (data.pos) {
-      posEl.textContent = data.pos
-      posEl.hidden = false
-    }
-    meanEl.textContent = data.meaning || 'Không tìm thấy nghĩa.'
-  } catch (e) {
-    if (activeOptions === opts) {
-      meanEl.textContent = 'Lỗi kết nối khi tra từ.'
-    }
+  const data = res.data
+  wordEl.textContent = data.word || opts.word
+  if (data.ipa) {
+    ipaEl.textContent = data.ipa
+    ipaEl.hidden = false
+  }
+  if (data.pos) {
+    posEl.textContent = data.pos
+    posEl.hidden = false
+  }
+  meanEl.textContent = data.meaning || 'Không tìm thấy nghĩa.'
+  if (data.meaning) {
+    activeDef = { ...data, word: data.word || opts.word }
+    saveBtn.disabled = opts.isSaved
   }
 }
-

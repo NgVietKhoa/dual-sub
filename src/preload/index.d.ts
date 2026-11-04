@@ -1,8 +1,8 @@
-import type { SongNguApi } from '../shared/types'
+import type { DualSubApi } from '../shared/types'
 
 declare global {
   interface Window {
-    api: SongNguApi
+    api: DualSubApi
   }
 }
 

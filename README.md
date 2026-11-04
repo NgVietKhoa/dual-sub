@@ -40,7 +40,7 @@
   - **Claude API (Anthropic)**: Tận dụng sức mạnh của các model Claude (mặc định `claude-haiku-4-5`).
 - **Dịch theo lô (Batching)**: Dịch ngay 8 câu đầu tiên để người dùng học tức thì, các câu còn lại tự động dịch nền và truyền về giao diện qua IPC events.
 - **Cache vĩnh viễn**: Lưu transcript và bản dịch theo `videoId` vào ổ đĩa (`userData/cache/`). Mở lại video cũ sẽ nạp tức thì mà không cần tải mạng hay dịch lại.
-- **Bảo mật**: API key được lưu ở main process và mã hoá an toàn bằng hệ điều hành thông qua Electron `safeStorage` (Windows DPAPI / macOS Keychain).
+- **Bảo mật**: API key được lưu ở main process và mã hoá an toàn bằng hệ điều hành thông qua Electron `safeStorage` (Windows DPAPI).
 
 ### 4. 📖 Tra từ điển 1-Click & Lưu từ vựng
 - Bấm vào bất kỳ từ nào trong ô **"Câu đang nói"** để mở popover tra nghĩa:
@@ -59,11 +59,9 @@
   - Cột 4 (*Source*): Link YouTube kèm mốc thời gian phát chính xác (ví dụ `https://youtu.be/...?t=42`)
 - Tích hợp sẵn **UTF-8 BOM**, mở trực tiếp trên Excel hoặc nhập vào Anki mà không bị lỗi font tiếng Việt.
 
-### 6. 🎙️ Whisper AI (Nhận dạng ngoại tuyến)
-- Dành riêng cho video **không có sẵn phụ đề** trên YouTube:
-  - Tải luồng audio bằng `yt-dlp`.
-  - Tự động chuẩn hoá âm thanh về chuẩn 16kHz WAV mono bằng `ffmpeg`.
-  - Nhận dạng giọng nói tự động và trích xuất timestamp từng câu thông qua `whisper.cpp`.
+### 6. 🕘 Video đã xem & Xem tiếp
+- Tab **"Đã xem"** lưu 50 video mở gần nhất kèm thumbnail, tiến độ và vị trí đang xem dở.
+- Bấm vào video (hoặc dán lại link không có `?t=`) để xem tiếp đúng chỗ đã dừng; video đã xem quá 95% sẽ phát lại từ đầu.
 
 ---
 
@@ -133,24 +131,8 @@ pnpm run test:live
 ```powershell
 # Build bộ cài đặt cho Windows (.exe installer NSIS)
 pnpm run dist:win
-
-# Build bộ cài đặt cho macOS (.dmg)
-pnpm run dist:mac
 ```
 File cài đặt hoàn chỉnh sẽ nằm trong thư mục `dist/`.
-
----
-
-## ⚙️ Cấu hình Whisper AI (Cho video không phụ đề)
-
-Khi gặp video không có phụ đề trên YouTube, ứng dụng sẽ hiển thị nút **"Tạo phụ đề bằng Whisper (AI)"**. Để sử dụng tính năng này ngoại tuyến:
-
-1. **`ffmpeg`**: Đã cài đặt trên hệ thống hoặc đặt file `ffmpeg.exe` vào `resources/bin/`.
-2. **`yt-dlp`**: Tải file [`yt-dlp.exe`](https://github.com/yt-dlp/yt-dlp/releases) và đặt vào `resources/bin/` (hoặc cài vào PATH).
-3. **`whisper.cpp`**: Tải bản build Windows x64 từ [whisper.cpp releases](https://github.com/ggerganov/whisper.cpp/releases), đặt `whisper-cli.exe` (hoặc `main.exe`) vào `resources/bin/`.
-4. **Whisper Model**: Tải model định dạng ggml (ví dụ [`ggml-tiny.bin`](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin) ~75MB hoặc [`ggml-base.bin`](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin) ~140MB) và đặt vào `resources/models/`.
-
-> Bạn có thể bấm nút **"Cài đặt"** trên thanh tiêu đề của app để kiểm tra trạng thái xanh của các công cụ này bất cứ lúc nào.
 
 ---
 
@@ -158,7 +140,7 @@ Khi gặp video không có phụ đề trên YouTube, ứng dụng sẽ hiển t
 
 ```
 dual-sub/
-├── resources/                 # Chứa binary (bin/) và model AI (models/)
+├── resources/                 # Icon và logo ứng dụng
 ├── src/
 │   ├── shared/                # Khai báo kiểu chung (types.ts), xử lý URL (videoId.ts)
 │   ├── main/                  # Tiến trình Electron Main Process
@@ -169,8 +151,7 @@ dual-sub/
 │   │   ├── captions/          # Lấy track phụ đề, chuẩn hoá & gộp câu ASR
 │   │   ├── translate/         # Translation providers (Google, DeepL, Claude, batcher)
 │   │   ├── dictionary/        # Tra từ điển Free Dictionary API & fallback
-│   │   ├── storage/           # Quản lý Cache video, từ vựng cá nhân, xuất CSV Anki
-│   │   └── asr/               # Tích hợp yt-dlp, ffmpeg và whisper.cpp
+│   │   └── storage/           # Quản lý Cache video, từ vựng cá nhân, video đã xem, xuất CSV Anki
 │   ├── preload/               # Script Preload mở API an toàn qua contextBridge
 │   └── renderer/              # Giao diện người dùng (HTML5, Modern CSS, TS modules)
 │       ├── index.html         # Khung giao diện chính

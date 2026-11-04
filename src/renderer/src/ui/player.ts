@@ -9,9 +9,8 @@ interface YTPlayer {
   getCurrentTime(): number
   getDuration(): number
   getPlayerState(): number
-  getVideoData(): { title?: string; video_id?: string }
+  getVideoData(): { title?: string }
   unloadModule(name: string): void
-  destroy(): void
 }
 
 interface YTNamespace {
@@ -28,7 +27,6 @@ declare global {
 
 export interface PlayerHandlers {
   onPlayingChange(playing: boolean): void
-  onEnded(): void
   onError(message: string): void
   onReady(info: { title: string; duration: number }): void
 }
@@ -123,11 +121,8 @@ export class VideoPlayer {
       this.handlers.onPlayingChange(true)
       const d = this.yt?.getVideoData()
       this.handlers.onReady({ title: d?.title ?? '', duration: this.yt?.getDuration() ?? 0 })
-    } else if (s === S.PAUSED) {
+    } else if (s === S.PAUSED || s === S.ENDED) {
       this.handlers.onPlayingChange(false)
-    } else if (s === S.ENDED) {
-      this.handlers.onPlayingChange(false)
-      this.handlers.onEnded()
     }
   }
 
@@ -146,9 +141,6 @@ export class VideoPlayer {
   }
   time(): number {
     return this.yt?.getCurrentTime() ?? 0
-  }
-  duration(): number {
-    return this.yt?.getDuration() ?? 0
   }
 }
 

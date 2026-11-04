@@ -40,7 +40,7 @@ export async function exportAnkiCsv(win?: BrowserWindow): Promise<ExportResult> 
 
   const { canceled, filePath } = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
     title: 'Xuất từ vựng cho Anki',
-    defaultPath: 'song-ngu-anki-words.csv',
+    defaultPath: 'dualsub-anki-words.csv',
     filters: [{ name: 'CSV (Comma delimited)', extensions: ['csv'] }]
   })
 

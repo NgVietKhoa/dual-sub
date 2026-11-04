@@ -1,9 +1,6 @@
 import type { WordDefinition } from '../../shared/types'
 import { GoogleProvider } from '../translate/google'
-import { getSecrets } from '../storage/settings'
-import { DeepLProvider } from '../translate/deepl'
-import { ClaudeProvider } from '../translate/claude'
-import type { TranslationProvider } from '../translate/TranslationProvider'
+import { createProvider } from '../translate/service'
 
 const POS_MAP: Record<string, string> = {
   noun: 'danh từ',
@@ -20,11 +17,10 @@ const POS_MAP: Record<string, string> = {
   numeral: 'số từ'
 }
 
-async function getProvider(): Promise<TranslationProvider> {
-  const s = await getSecrets()
-  if (s.provider === 'deepl' && s.deeplKey) return new DeepLProvider(s.deeplKey)
-  if (s.provider === 'claude' && s.claudeKey) return new ClaudeProvider(s.claudeKey, s.claudeModel)
-  return new GoogleProvider()
+/** Dịch bằng provider trong Cài đặt; provider lỗi (thiếu key, hết hạn mức...) thì thử Google. */
+async function translate(lines: string[], from: string, to: string): Promise<string[]> {
+  const provider = await createProvider()
+  return provider.translateBatch(lines, from, to).catch(() => new GoogleProvider().translateBatch(lines, from, to))
 }
 
 interface FreeDictEntry {
@@ -37,17 +33,15 @@ interface FreeDictEntry {
   }[]
 }
 
-export async function lookupWord(rawWord: string, srcLang = 'en'): Promise<WordDefinition> {
-  const word = rawWord.trim().replace(/^[^a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]+|[^a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]+$/g, '')
+/** Tra từ `rawWord` (ngôn ngữ `from` của video) và giải nghĩa sang ngôn ngữ `to`. */
+export async function lookupWord(rawWord: string, from: string, to: string): Promise<WordDefinition> {
+  const word = rawWord.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')
   if (!word) {
     return { word: rawWord, meaning: '' }
   }
 
-  const lang = (srcLang || 'en').toLowerCase().split(/[-_]/)[0]
-  const provider = await getProvider()
-
-  // Đối với tiếng Anh, dùng Free Dictionary API trước
-  if (lang === 'en' || lang === 'auto') {
+  // Tiếng Anh: dùng Free Dictionary API trước để có IPA, loại từ, định nghĩa
+  if (from.toLowerCase().split(/[-_]/)[0] === 'en') {
     try {
       const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`, {
         signal: AbortSignal.timeout(6000)
@@ -58,21 +52,12 @@ export async function lookupWord(rawWord: string, srcLang = 'en'): Promise<WordD
         if (entry) {
           const ipa = entry.phonetic || entry.phonetics?.find((p) => p.text)?.text || ''
           const rawPos = entry.meanings?.[0]?.partOfSpeech || ''
-          const pos = POS_MAP[rawPos.toLowerCase()] || rawPos
+          const pos = (to === 'vi' && POS_MAP[rawPos.toLowerCase()]) || rawPos
           const rawDef = entry.meanings?.[0]?.definitions?.[0]?.definition || ''
 
-          // Dịch song song nghĩa từ và định nghĩa sang tiếng Việt
-          const toTranslate = rawDef ? [word, rawDef] : [word]
-          let trResults: string[] = []
-          try {
-            trResults = await provider.translateBatch(toTranslate, 'en', 'vi')
-          } catch {
-            // Nếu provider hiện tại lỗi, thử với Google
-            trResults = await new GoogleProvider().translateBatch(toTranslate, 'en', 'vi').catch(() => [word, ''])
-          }
-
-          const wordMeaning = trResults[0] || ''
-          const defMeaning = trResults[1] || ''
+          const [wordMeaning = '', defMeaning = ''] = await translate(rawDef ? [word, rawDef] : [word], from, to).catch(
+            (): string[] => []
+          )
           let meaning = wordMeaning
           if (defMeaning && defMeaning.toLowerCase() !== wordMeaning.toLowerCase()) {
             meaning = `${wordMeaning} (${defMeaning})`
@@ -82,7 +67,7 @@ export async function lookupWord(rawWord: string, srcLang = 'en'): Promise<WordD
             word: entry.word || word,
             ipa,
             pos,
-            meaning: meaning || 'Chưa tìm thấy nghĩa tiếng Việt.'
+            meaning
           }
         }
       }
@@ -91,18 +76,7 @@ export async function lookupWord(rawWord: string, srcLang = 'en'): Promise<WordD
     }
   }
 
-  // Fallback hoặc ngôn ngữ khác: dịch trực tiếp từ sang tiếng Việt
-  try {
-    const [meaning] = await provider.translateBatch([word], lang === 'auto' ? 'en' : lang, 'vi')
-    return {
-      word,
-      meaning: meaning || 'Không thể dịch từ này.'
-    }
-  } catch (e) {
-    return {
-      word,
-      meaning: 'Lỗi khi tra nghĩa từ.'
-    }
-  }
+  // Fallback hoặc ngôn ngữ khác: dịch trực tiếp từ. meaning rỗng = không tìm thấy nghĩa.
+  const [meaning = ''] = await translate([word], from, to)
+  return { word, meaning }
 }
-

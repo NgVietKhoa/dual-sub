@@ -1,5 +1,3 @@
-import type { Cue } from '../../shared/types'
-
 /** Định dạng json3 của YouTube (chỉ các trường dùng tới). */
 interface Json3 {
   events?: {
@@ -55,6 +53,4 @@ export function toWords(j: Json3): Word[] {
   }
   return words
 }
-
-export type { Cue }
 
