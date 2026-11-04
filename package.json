@@ -1,6 +1,6 @@
 {
   "name": "dual-sub",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DualSub - Ứng dụng desktop học ngoại ngữ qua video YouTube với phụ đề song ngữ và AI",
   "private": true,
   "main": "./out/main/index.js",
@@ -44,7 +44,8 @@
       {
         "provider": "github",
         "owner": "NgVietKhoa",
-        "repo": "dual-sub"
+        "repo": "dual-sub",
+        "releaseType": "release"
       }
     ],
     "win": {
