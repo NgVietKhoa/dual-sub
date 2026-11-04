@@ -47,14 +47,6 @@ export function updateItemsTranslation(items: { i: number; text: string }[]): vo
   applyFilter()
 }
 
-export function updateTranslations(from: number, to: number): void {
-  for (let i = from; i < to && i < lineEls.length; i++) {
-    const vi = lineEls[i].querySelector('.vi')
-    if (vi) vi.textContent = state.lines[i].vi
-  }
-  applyFilter()
-}
-
 function applyFilter(): void {
   const q = $<HTMLInputElement>('filter').value.trim().toLowerCase()
   lineEls.forEach((el, i) => {
@@ -80,13 +72,9 @@ export function setActiveLine(i: number): void {
   }
 }
 
-export function renderFoot(vocabCount?: number): void {
-  const foot = $('footInfo')
-  if (vocabCount !== undefined) {
-    foot.textContent = `${vocabCount} từ đã lưu`
-    return
-  }
+export function renderFoot(): void {
+  if ($('tList').hidden) return // đang ở tab khác, chân khung do tabs.ts hiển thị
   const n = state.lines.length
-  foot.textContent = n ? `${n} câu · ${Math.round(state.duration)} giây` : 'Chưa có transcript'
+  $('footInfo').textContent = n ? `${n} câu · ${Math.round(state.duration)} giây` : 'Chưa có transcript'
 }
 

@@ -38,10 +38,6 @@
             <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
           </button>
           <div class="subs" id="subs"><span class="o" id="subO" hidden></span><span class="v" id="subV" hidden></span></div>
-          <div class="whisper-box" id="whisperBox" hidden>
-            <div id="whisperMsg">Video này không có phụ đề trên YouTube.</div>
-            <button class="btn primary" id="whisperBtn" type="button" style="margin-top:10px">Tạo phụ đề bằng Whisper (AI)</button>
-          </div>
         </div>
         <div class="controls">
           <div class="track" id="track" role="slider" aria-label="Tua video" tabindex="0" aria-valuemin="0">
@@ -84,6 +80,7 @@
       <div class="tabs" role="tablist">
         <button class="tab" role="tab" id="tabT" aria-selected="true">Transcript</button>
         <button class="tab" role="tab" id="tabV" aria-selected="false">Từ đã lưu <span class="count" id="vCount">0</span></button>
+        <button class="tab" role="tab" id="tabH" aria-selected="false">Đã xem <span class="count" id="hCount">0</span></button>
       </div>
       <div class="tools" id="tTools">
         <input id="filter" type="search" placeholder="Tìm trong transcript" aria-label="Tìm trong transcript" />
@@ -91,6 +88,7 @@
       </div>
       <div class="list" id="tList"></div>
       <div class="list" id="vList" hidden></div>
+      <div class="list" id="hList" hidden></div>
       <div class="rail-foot"><span id="footInfo">Chưa có transcript</span><span style="display:flex;gap:8px"><button class="btn" id="retryBtn" type="button" hidden>Thử dịch lại</button><button class="btn" id="exportBtn" type="button">Xuất Anki</button></span></div>
     </aside>
   </main>
@@ -116,10 +114,6 @@
       <input id="setModel" type="text" autocomplete="off" spellcheck="false" />
     </label>
     <p class="hint">Key được lưu trên máy này (mã hoá bằng hệ điều hành) và chỉ dùng ở tiến trình chính, không gửi sang giao diện.</p>
-
-    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0" />
-    <h2>Whisper AI (Nhận dạng ngoại tuyến)</h2>
-    <div id="asrStatusInfo" style="font-size:12.5px;line-height:1.6;color:var(--muted);margin-bottom:12px"></div>
 
     <hr style="border:0;border-top:1px solid var(--line);margin:14px 0" />
     <h2>Cập nhật ứng dụng</h2>

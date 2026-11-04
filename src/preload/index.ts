@@ -1,8 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC,
-  type AsrProgress,
-  type SongNguApi,
+  type DualSubApi,
   type TranslateDone,
   type TranslateProgress,
   type UpdateStatus
@@ -15,7 +14,7 @@ function on<T>(channel: string, cb: (data: T) => void): () => void {
   return () => ipcRenderer.removeListener(channel, handler)
 }
 
-const api: SongNguApi = {
+const api: DualSubApi = {
   getAppInfo: () => ipcRenderer.invoke(IPC.appInfo),
   loadCaptions: (videoId, preferredLang) => ipcRenderer.invoke(IPC.captionsLoad, videoId, preferredLang),
   translateStart: (videoId, preferredLang, to) =>
@@ -25,14 +24,14 @@ const api: SongNguApi = {
   onTranslateDone: (cb) => on<TranslateDone>(IPC.translateDone, cb),
   getSettings: () => ipcRenderer.invoke(IPC.settingsGet),
   saveSettings: (update) => ipcRenderer.invoke(IPC.settingsSave, update),
-  lookupWord: (word, srcLang) => ipcRenderer.invoke(IPC.dictLookup, word, srcLang),
+  lookupWord: (word, from, to) => ipcRenderer.invoke(IPC.dictLookup, word, from, to),
   getSavedWords: () => ipcRenderer.invoke(IPC.wordsList),
   saveWord: (data) => ipcRenderer.invoke(IPC.wordSave, data),
   deleteWord: (id) => ipcRenderer.invoke(IPC.wordDelete, id),
   exportAnkiCsv: () => ipcRenderer.invoke(IPC.wordsExportAnki),
-  getAsrStatus: () => ipcRenderer.invoke(IPC.asrStatus),
-  transcribeWithWhisper: (videoId, lang) => ipcRenderer.invoke(IPC.asrTranscribe, videoId, lang),
-  onAsrProgress: (cb) => on<AsrProgress>(IPC.asrProgress, cb),
+  getWatchedVideos: () => ipcRenderer.invoke(IPC.watchedList),
+  saveWatchedVideo: (data) => ipcRenderer.invoke(IPC.watchedSave, data),
+  deleteWatchedVideo: (videoId) => ipcRenderer.invoke(IPC.watchedDelete, videoId),
   checkForUpdates: () => ipcRenderer.invoke(IPC.updaterCheck),
   downloadUpdate: () => ipcRenderer.invoke(IPC.updaterDownload),
   installUpdate: () => ipcRenderer.invoke(IPC.updaterInstall),

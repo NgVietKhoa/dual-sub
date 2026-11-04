@@ -10,11 +10,10 @@
     "start": "electron-vite preview",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "test": "vitest run tests/captions.test.ts tests/translate.test.ts tests/words.test.ts tests/asr.test.ts",
+    "test": "vitest run tests/captions.test.ts tests/translate.test.ts tests/words.test.ts",
     "test:live": "vitest run tests/live.test.ts",
     "dist": "electron-vite build && electron-builder",
-    "dist:win": "electron-vite build && electron-builder --win",
-    "dist:mac": "electron-vite build && electron-builder --mac"
+    "dist:win": "electron-vite build && electron-builder --win"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -51,12 +50,6 @@
     "win": {
       "target": [
         "nsis"
-      ],
-      "icon": "resources/icon.png"
-    },
-    "mac": {
-      "target": [
-        "dmg"
       ],
       "icon": "resources/icon.png"
     }

@@ -9,7 +9,7 @@ const ID = process.env.VIDEO_ID ?? '4ycKrWTvzNY'
 describe('loadCaptions (live)', () => {
   it('lấy phụ đề thật', async () => {
     const r = await loadCaptions(ID, 'auto')
-    console.log(r.title, r.lang, r.kind, r.cues.length, r.tracks.length)
+    console.log(r.title, r.lang, r.kind, r.cues.length)
     console.log(r.cues.slice(0, 8))
     expect(r.cues.length).toBeGreaterThan(5)
   }, 90000)

@@ -75,13 +75,10 @@ app.whenReady().then(async () => {
   registerIpc()
   ensureYouTubeReferer()
   await createWindow()
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) void createWindow()
-  })
 })
 
 app.on('window-all-closed', () => {
   server?.close()
-  if (process.platform !== 'darwin') app.quit()
+  app.quit()
 })
 

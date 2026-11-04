@@ -3,7 +3,7 @@ export interface Line {
   s: number
   e: number
   en: string
-  /** Bản dịch; rỗng nếu chưa dịch xong (Phase 3). */
+  /** Bản dịch; rỗng nếu chưa dịch xong. */
   vi: string
 }
 
@@ -12,6 +12,8 @@ export type SubMode = 'both' | 'orig' | 'vi' | 'veil' | 'off'
 export interface State {
   videoId: string | null
   title: string
+  /** Ngôn ngữ của phụ đề đang hiện (đã nhận diện), dùng khi tra từ. */
+  lang: string
   lines: Line[]
   duration: number
   t: number
@@ -28,6 +30,7 @@ export interface State {
 export const state: State = {
   videoId: null,
   title: '',
+  lang: '',
   lines: [],
   duration: 0,
   t: 0,

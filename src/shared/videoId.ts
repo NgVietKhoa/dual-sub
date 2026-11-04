@@ -1,5 +1,5 @@
 /** Tách videoId (11 ký tự) từ mọi dạng link YouTube. Trả về null nếu không hợp lệ. */
-const ID_RE = /^[\w-]{11}$/
+export const ID_RE = /^[\w-]{11}$/
 
 const HOSTS = new Set([
   'youtube.com',

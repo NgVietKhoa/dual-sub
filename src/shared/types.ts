@@ -9,7 +9,6 @@ export interface Cue {
 
 export interface AppInfo {
   version: string
-  platform: string
 }
 
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string } }
@@ -31,9 +30,6 @@ export interface CaptionsPayload {
   langName: string
   kind: 'manual' | 'asr'
   cues: Cue[]
-  tracks: CaptionTrackInfo[]
-  /** true nếu lấy từ cache trên đĩa (không gọi mạng) */
-  fromCache?: boolean
 }
 
 export type ProviderId = 'google' | 'deepl' | 'claude'
@@ -89,41 +85,24 @@ export interface SavedWord {
   createdAt: number
 }
 
+export interface WatchedVideo {
+  videoId: string
+  title: string
+  /** Giây */
+  duration: number
+  /** Vị trí đang xem dở (giây) */
+  position: number
+  watchedAt: number
+}
+
 export interface ExportResult {
   canceled: boolean
   count: number
   filePath?: string
 }
 
-export interface AsrStatus {
-  hasFfmpeg: boolean
-  hasYtDlp: boolean
-  hasWhisper: boolean
-  hasModel: boolean
-  modelPath?: string
-  binDir: string
-  modelsDir: string
-}
-
-export interface AsrProgress {
-  videoId: string
-  stage: 'downloading' | 'converting' | 'transcribing'
-  percent?: number
-  message: string
-}
-
-export type UpdateStatusState =
-  | 'idle'
-  | 'checking'
-  | 'available'
-  | 'not-available'
-  | 'downloading'
-  | 'downloaded'
-  | 'error'
-
 export interface UpdateStatus {
-  state: UpdateStatusState
-  currentVersion: string
+  state: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
   newVersion?: string
   percent?: number
   message?: string
@@ -141,21 +120,19 @@ export interface DualSubApi {
   onTranslateDone(cb: (d: TranslateDone) => void): () => void
   getSettings(): Promise<SettingsView>
   saveSettings(update: SettingsUpdate): Promise<IpcResult<SettingsView>>
-  lookupWord(word: string, srcLang: string): Promise<IpcResult<WordDefinition>>
+  lookupWord(word: string, from: string, to: string): Promise<IpcResult<WordDefinition>>
   getSavedWords(): Promise<SavedWord[]>
   saveWord(data: Omit<SavedWord, 'id' | 'createdAt'>): Promise<IpcResult<SavedWord>>
   deleteWord(id: string): Promise<IpcResult<boolean>>
   exportAnkiCsv(): Promise<IpcResult<ExportResult>>
-  getAsrStatus(): Promise<AsrStatus>
-  transcribeWithWhisper(videoId: string, lang?: string): Promise<IpcResult<CaptionsPayload>>
-  onAsrProgress(cb: (p: AsrProgress) => void): () => void
-  checkForUpdates(): Promise<IpcResult<UpdateStatus>>
-  downloadUpdate(): Promise<IpcResult<null>>
+  getWatchedVideos(): Promise<WatchedVideo[]>
+  saveWatchedVideo(data: Omit<WatchedVideo, 'watchedAt'>): Promise<IpcResult<WatchedVideo>>
+  deleteWatchedVideo(videoId: string): Promise<IpcResult<boolean>>
+  checkForUpdates(): Promise<IpcResult<void>>
+  downloadUpdate(): Promise<IpcResult<void>>
   installUpdate(): Promise<void>
   onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
 }
-
-export type SongNguApi = DualSubApi
 
 export const IPC = {
   appInfo: 'app:info',
@@ -171,9 +148,9 @@ export const IPC = {
   wordSave: 'word:save',
   wordDelete: 'word:delete',
   wordsExportAnki: 'words:exportAnki',
-  asrStatus: 'asr:status',
-  asrTranscribe: 'asr:transcribe',
-  asrProgress: 'asr:progress',
+  watchedList: 'watched:list',
+  watchedSave: 'watched:save',
+  watchedDelete: 'watched:delete',
   updaterCheck: 'updater:check',
   updaterDownload: 'updater:download',
   updaterInstall: 'updater:install',

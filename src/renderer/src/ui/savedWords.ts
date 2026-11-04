@@ -5,11 +5,6 @@ import { setVocabCount } from './tabs'
 import { toast } from './toast'
 
 let savedWords: SavedWord[] = []
-let onSelectWordCallback: ((word: SavedWord) => void) | null = null
-
-export function getSavedWordsList(): SavedWord[] {
-  return savedWords
-}
 
 export function isWordSaved(word: string): boolean {
   const key = word.toLowerCase()
@@ -17,54 +12,35 @@ export function isWordSaved(word: string): boolean {
 }
 
 export async function initSavedWords(onSelect: (word: SavedWord) => void): Promise<void> {
-  onSelectWordCallback = onSelect
-  const vList = $('vList')
-  vList.addEventListener('click', async (e) => {
+  $('vList').addEventListener('click', async (e) => {
     const target = e.target as HTMLElement
     const delBtn = target.closest<HTMLElement>('.x')
     if (delBtn) {
       e.stopPropagation()
-      const id = delBtn.dataset.id
-      if (id) {
-        await deleteSavedWord(id)
-      }
+      if (delBtn.dataset.id) await deleteSavedWord(delBtn.dataset.id)
       return
     }
 
-    const item = target.closest<HTMLElement>('.vocab-item')
-    if (item && onSelectWordCallback) {
-      const id = item.dataset.id
-      const found = savedWords.find((w) => w.id === id)
-      if (found) onSelectWordCallback(found)
-    }
+    const id = target.closest<HTMLElement>('.vocab-item')?.dataset.id
+    const found = savedWords.find((w) => w.id === id)
+    if (found) onSelect(found)
   })
 
-  // Nút Xuất Anki
   $('exportBtn').onclick = async () => {
     if (!savedWords.length) {
       return toast('Lưu vài từ trước rồi xuất sang Anki.')
     }
-    try {
-      const res = await window.api.exportAnkiCsv()
-      if (!res.ok) {
-        return toast(res.error.message)
-      }
-      if (res.data.canceled) return
-      toast(`Đã xuất ${res.data.count} từ vựng sang Anki thành công!`)
-    } catch {
-      toast('Không thể xuất file Anki.')
-    }
+    const res = await window.api.exportAnkiCsv()
+    if (!res.ok) return toast(res.error.message)
+    if (res.data.canceled) return
+    toast(`Đã xuất ${res.data.count} từ vựng sang Anki thành công!`)
   }
 
   await refreshSavedWords()
 }
 
-export async function refreshSavedWords(): Promise<void> {
-  try {
-    savedWords = await window.api.getSavedWords()
-  } catch {
-    savedWords = []
-  }
+async function refreshSavedWords(): Promise<void> {
+  savedWords = await window.api.getSavedWords()
   setVocabCount(savedWords.length)
   setSavedWords(savedWords.map((w) => w.word.toLowerCase()))
   renderSavedList()
@@ -86,24 +62,18 @@ export async function addWord(
     videoId,
     timestamp
   })
-  if (res.ok) {
-    await refreshSavedWords()
-  } else {
-    throw new Error(res.error.message)
-  }
+  if (!res.ok) throw new Error(res.error.message)
+  await refreshSavedWords()
 }
 
-export async function deleteSavedWord(id: string): Promise<void> {
+async function deleteSavedWord(id: string): Promise<void> {
   const res = await window.api.deleteWord(id)
-  if (res.ok) {
-    await refreshSavedWords()
-    toast('Đã xoá từ vựng')
-  } else {
-    toast(res.error.message)
-  }
+  if (!res.ok) return toast(res.error.message)
+  await refreshSavedWords()
+  toast('Đã xoá từ vựng')
 }
 
-export function renderSavedList(): void {
+function renderSavedList(): void {
   const vl = $('vList')
   if (!savedWords.length) {
     vl.innerHTML =
@@ -123,4 +93,3 @@ export function renderSavedList(): void {
     )
     .join('')
 }
-

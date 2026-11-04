@@ -5,7 +5,8 @@ import {
   type CaptionsPayload,
   type IpcResult,
   type SavedWord,
-  type SettingsUpdate
+  type SettingsUpdate,
+  type WatchedVideo
 } from '../shared/types'
 import { loadCaptions } from './captions'
 import { getEntry, saveEntry } from './storage/cache'
@@ -15,9 +16,9 @@ import { toAppError } from './youtube/errors'
 import { lookupWord } from './dictionary/lookup'
 import { deleteWord, getSavedWords, saveWord } from './storage/words'
 import { exportAnkiCsv } from './storage/exportCsv'
-import { getAsrStatus } from './asr/paths'
-import { transcribeVideoWithWhisper } from './asr/service'
+import { deleteWatchedVideo, getWatchedVideos, saveWatchedVideo } from './storage/watched'
 import { checkUpdatesManually, quitAndInstallUpdate, startDownloadUpdate } from './updater'
+import { ID_RE } from '../shared/videoId'
 
 /** Bọc handler để mọi lỗi trả về dạng { ok:false, error } với thông báo tiếng Việt. */
 async function wrap<T>(fn: () => Promise<T>): Promise<IpcResult<T>> {
@@ -30,13 +31,13 @@ async function wrap<T>(fn: () => Promise<T>): Promise<IpcResult<T>> {
   }
 }
 
-const validId = (v: unknown): v is string => typeof v === 'string' && /^[\w-]{11}$/.test(v)
+const validId = (v: unknown): v is string => typeof v === 'string' && ID_RE.test(v)
 const str = (v: unknown, fallback: string): string => (typeof v === 'string' && v ? v : fallback)
 
 /** Có cache thì dùng, không thì tải từ YouTube rồi lưu cache. */
 async function captionsCached(videoId: string, preferred: string): Promise<CaptionsPayload> {
   const hit = await getEntry(videoId, preferred)
-  if (hit) return { ...hit.payload, fromCache: true }
+  if (hit) return hit.payload
   const payload = await loadCaptions(videoId, preferred)
   await saveEntry({ version: 1, videoId, preferred, payload, translations: {}, savedAt: Date.now() })
   return payload
@@ -44,11 +45,11 @@ async function captionsCached(videoId: string, preferred: string): Promise<Capti
 
 const jobs = new TranslateJobs()
 
-/** Đăng ký toàn bộ handler IPC. Các phase sau sẽ thêm kênh vào đây. */
+/** Đăng ký toàn bộ handler IPC. */
 export function registerIpc(): void {
   ipcMain.handle(
     IPC.appInfo,
-    (): AppInfo => ({ version: app.getVersion(), platform: process.platform })
+    (): AppInfo => ({ version: app.getVersion() })
   )
 
   ipcMain.handle(IPC.captionsLoad, (_e, videoId: unknown, preferred: unknown) =>
@@ -80,10 +81,10 @@ export function registerIpc(): void {
     wrap(() => updateSettings(update ?? {}))
   )
 
-  ipcMain.handle(IPC.dictLookup, (_e, word: unknown, srcLang: unknown) =>
+  ipcMain.handle(IPC.dictLookup, (_e, word: unknown, from: unknown, to: unknown) =>
     wrap(() => {
       if (typeof word !== 'string' || !word.trim()) throw new Error('Từ không hợp lệ')
-      return lookupWord(word, typeof srcLang === 'string' ? srcLang : 'en')
+      return lookupWord(word, str(from, 'en'), str(to, 'vi'))
     })
   )
 
@@ -110,18 +111,19 @@ export function registerIpc(): void {
     })
   )
 
-  ipcMain.handle(IPC.asrStatus, () => getAsrStatus())
+  ipcMain.handle(IPC.watchedList, () => getWatchedVideos())
 
-  ipcMain.handle(IPC.asrTranscribe, (e, videoId: unknown, lang: unknown) =>
-    wrap(async () => {
+  ipcMain.handle(IPC.watchedSave, (_e, data: Omit<WatchedVideo, 'watchedAt'>) =>
+    wrap(() => {
+      if (!data || !validId(data.videoId)) throw new Error('videoId không hợp lệ')
+      return saveWatchedVideo(data)
+    })
+  )
+
+  ipcMain.handle(IPC.watchedDelete, (_e, videoId: unknown) =>
+    wrap(() => {
       if (!validId(videoId)) throw new Error('videoId không hợp lệ')
-      const sender: WebContents = e.sender
-      const send = (ch: string, payload: unknown): void => {
-        if (!sender.isDestroyed()) sender.send(ch, payload)
-      }
-      return transcribeVideoWithWhisper(videoId, str(lang, 'auto'), {
-        progress: (p) => send(IPC.asrProgress, p)
-      })
+      return deleteWatchedVideo(videoId)
     })
   )
 
