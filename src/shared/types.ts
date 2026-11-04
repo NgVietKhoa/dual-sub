@@ -112,6 +112,23 @@ export interface AsrProgress {
   message: string
 }
 
+export type UpdateStatusState =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error'
+
+export interface UpdateStatus {
+  state: UpdateStatusState
+  currentVersion: string
+  newVersion?: string
+  percent?: number
+  message?: string
+}
+
 /** API do preload mở ra cho renderer qua contextBridge. */
 export interface DualSubApi {
   getAppInfo(): Promise<AppInfo>
@@ -132,6 +149,10 @@ export interface DualSubApi {
   getAsrStatus(): Promise<AsrStatus>
   transcribeWithWhisper(videoId: string, lang?: string): Promise<IpcResult<CaptionsPayload>>
   onAsrProgress(cb: (p: AsrProgress) => void): () => void
+  checkForUpdates(): Promise<IpcResult<UpdateStatus>>
+  downloadUpdate(): Promise<IpcResult<null>>
+  installUpdate(): Promise<void>
+  onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
 }
 
 export type SongNguApi = DualSubApi
@@ -152,5 +173,9 @@ export const IPC = {
   wordsExportAnki: 'words:exportAnki',
   asrStatus: 'asr:status',
   asrTranscribe: 'asr:transcribe',
-  asrProgress: 'asr:progress'
+  asrProgress: 'asr:progress',
+  updaterCheck: 'updater:check',
+  updaterDownload: 'updater:download',
+  updaterInstall: 'updater:install',
+  updaterStatus: 'updater:status'
 } as const

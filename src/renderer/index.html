@@ -121,6 +121,20 @@
     <h2>Whisper AI (Nhận dạng ngoại tuyến)</h2>
     <div id="asrStatusInfo" style="font-size:12.5px;line-height:1.6;color:var(--muted);margin-bottom:12px"></div>
 
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0" />
+    <h2>Cập nhật ứng dụng</h2>
+    <div id="updateBox" style="font-size:12.5px;line-height:1.6;color:var(--muted);margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span>Phiên bản hiện tại: <b id="appVersionText">v0.1.0</b></span>
+        <button class="btn" type="button" id="checkUpdateBtn" style="padding:4px 10px;font-size:12px">Kiểm tra cập nhật</button>
+      </div>
+      <div id="updateStatusMsg"></div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn primary" type="button" id="downloadUpdateBtn" style="padding:4px 10px;font-size:12px" hidden>Tải bản cập nhật</button>
+        <button class="btn primary" type="button" id="installUpdateBtn" style="padding:4px 10px;font-size:12px" hidden>Khởi động lại & Cập nhật</button>
+      </div>
+    </div>
+
     <div class="dlg-actions">
       <button class="btn" type="button" id="clearKeys">Xoá key đã lưu</button>
       <span class="spacer"></span>

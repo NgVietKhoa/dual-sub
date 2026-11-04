@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 import { registerIpc } from './ipc'
 import { startStaticServer, type StaticServer } from './staticServer'
+import { initAutoUpdater } from './updater'
 
 let server: StaticServer | null = null
 let rendererOrigin = ''
@@ -45,7 +46,10 @@ async function createWindow(): Promise<void> {
     }
   })
 
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    win.show()
+    initAutoUpdater(win)
+  })
 
   // Link mở ra ngoài app → trình duyệt mặc định; không cho cửa sổ con.
   win.webContents.setWindowOpenHandler(({ url }) => {

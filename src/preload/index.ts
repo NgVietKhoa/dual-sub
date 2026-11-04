@@ -4,7 +4,8 @@ import {
   type AsrProgress,
   type SongNguApi,
   type TranslateDone,
-  type TranslateProgress
+  type TranslateProgress,
+  type UpdateStatus
 } from '../shared/types'
 
 /** Đăng ký lắng nghe sự kiện từ main; trả về hàm huỷ đăng ký. */
@@ -31,7 +32,11 @@ const api: SongNguApi = {
   exportAnkiCsv: () => ipcRenderer.invoke(IPC.wordsExportAnki),
   getAsrStatus: () => ipcRenderer.invoke(IPC.asrStatus),
   transcribeWithWhisper: (videoId, lang) => ipcRenderer.invoke(IPC.asrTranscribe, videoId, lang),
-  onAsrProgress: (cb) => on<AsrProgress>(IPC.asrProgress, cb)
+  onAsrProgress: (cb) => on<AsrProgress>(IPC.asrProgress, cb),
+  checkForUpdates: () => ipcRenderer.invoke(IPC.updaterCheck),
+  downloadUpdate: () => ipcRenderer.invoke(IPC.updaterDownload),
+  installUpdate: () => ipcRenderer.invoke(IPC.updaterInstall),
+  onUpdateStatus: (cb) => on<UpdateStatus>(IPC.updaterStatus, cb)
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -17,6 +17,7 @@ import { deleteWord, getSavedWords, saveWord } from './storage/words'
 import { exportAnkiCsv } from './storage/exportCsv'
 import { getAsrStatus } from './asr/paths'
 import { transcribeVideoWithWhisper } from './asr/service'
+import { checkUpdatesManually, quitAndInstallUpdate, startDownloadUpdate } from './updater'
 
 /** Bọc handler để mọi lỗi trả về dạng { ok:false, error } với thông báo tiếng Việt. */
 async function wrap<T>(fn: () => Promise<T>): Promise<IpcResult<T>> {
@@ -123,4 +124,10 @@ export function registerIpc(): void {
       })
     })
   )
+
+  ipcMain.handle(IPC.updaterCheck, () => wrap(() => checkUpdatesManually()))
+  ipcMain.handle(IPC.updaterDownload, () => wrap(() => startDownloadUpdate()))
+  ipcMain.handle(IPC.updaterInstall, () => {
+    quitAndInstallUpdate()
+  })
 }

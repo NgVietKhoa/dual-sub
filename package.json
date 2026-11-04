@@ -32,6 +32,7 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "youtubei.js": "^18.3.0"
   },
   "build": {
@@ -40,12 +41,23 @@
     "directories": {
       "output": "dist"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "NgVietKhoa",
+        "repo": "dual-sub"
+      }
+    ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "resources/icon.png"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "resources/icon.png"
     }
   }
