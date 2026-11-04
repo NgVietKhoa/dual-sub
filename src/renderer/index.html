@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DualSub</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500&display=swap" />
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><img src="/logo.png" alt="DualSub" class="brand-logo" />DualSub</div>
+    <form class="urlform" id="urlForm">
+      <input id="url" type="text" placeholder="Dán link YouTube, ví dụ https://youtu.be/..." aria-label="Link YouTube" autocomplete="off" spellcheck="false" />
+      <button class="btn primary" type="submit">Mở video</button>
+    </form>
+    <div class="langs">
+      <label for="srcLang">Nguồn</label>
+      <select id="srcLang"></select>
+      <span class="arrow">→</span>
+      <label for="dstLang">Dịch</label>
+      <select id="dstLang"></select>
+    </div>
+    <button class="btn" id="settingsBtn" type="button" title="Cài đặt dịch thuật">Cài đặt</button>
+  </header>
+
+  <main class="main">
+    <section class="left">
+      <div class="player">
+        <div class="stage" id="stage">
+          <div id="ytHost"></div>
+          <div class="shield" id="shield"></div>
+          <span class="stage-title" id="stageTitle" hidden></span>
+          <div class="placeholder" id="placeholder">Dán link YouTube ở thanh trên rồi bấm “Mở video”.</div>
+          <button class="bigplay" id="bigPlay" aria-label="Phát" hidden>
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+          </button>
+          <div class="subs" id="subs"><span class="o" id="subO" hidden></span><span class="v" id="subV" hidden></span></div>
+          <div class="whisper-box" id="whisperBox" hidden>
+            <div id="whisperMsg">Video này không có phụ đề trên YouTube.</div>
+            <button class="btn primary" id="whisperBtn" type="button" style="margin-top:10px">Tạo phụ đề bằng Whisper (AI)</button>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="track" id="track" role="slider" aria-label="Tua video" tabindex="0" aria-valuemin="0">
+            <div class="rail"></div><div class="fill" id="fill"></div><div id="segs"></div><div class="knob" id="knob"></div>
+          </div>
+          <div class="row">
+            <button class="cbtn" id="prevBtn" title="Câu trước (←)" aria-label="Câu trước"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM9.5 12 18 18V6z"/></svg></button>
+            <button class="cbtn" id="playBtn" title="Phát / dừng (Space)" aria-label="Phát"><svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+            <button class="cbtn" id="nextBtn" title="Câu sau (→)" aria-label="Câu sau"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></button>
+            <span class="time" id="time">0:00 / 0:00</span>
+            <span class="spacer"></span>
+            <button class="cbtn" id="loopBtn" aria-pressed="false" title="Lặp câu hiện tại (R)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>Lặp câu
+            </button>
+            <div class="seg-ctl" id="speedCtl" role="group" aria-label="Tốc độ">
+              <button data-s="0.5">0.5×</button><button data-s="0.75">0.75×</button><button data-s="1" aria-pressed="true">1×</button><button data-s="1.25">1.25×</button>
+            </div>
+          </div>
+          <div class="row">
+            <span class="time" style="margin-left:0">Phụ đề</span>
+            <div class="seg-ctl" id="modeCtl" role="group" aria-label="Kiểu phụ đề">
+              <button data-m="both" aria-pressed="true">Song ngữ</button><button data-m="orig">Chỉ gốc</button><button data-m="vi">Chỉ dịch</button><button data-m="veil">Che bản dịch</button><button data-m="off">Tắt</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="now" aria-live="polite">
+        <div class="now-head">
+          <span class="eyebrow" id="nowLabel">Câu đang nói</span>
+          <span class="chip" id="srcChip" hidden><span class="dot"></span><span id="srcChipText"></span></span>
+        </div>
+        <div class="now-orig" id="nowOrig"></div>
+        <div class="now-vi" id="nowVi"></div>
+        <div class="hint">Bấm vào một từ để tra nghĩa và lưu. Phím tắt: <kbd>Space</kbd> phát/dừng · <kbd>←</kbd> <kbd>→</kbd> đổi câu · <kbd>R</kbd> lặp câu</div>
+      </div>
+    </section>
+
+    <aside class="rail-panel">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tabT" aria-selected="true">Transcript</button>
+        <button class="tab" role="tab" id="tabV" aria-selected="false">Từ đã lưu <span class="count" id="vCount">0</span></button>
+      </div>
+      <div class="tools" id="tTools">
+        <input id="filter" type="search" placeholder="Tìm trong transcript" aria-label="Tìm trong transcript" />
+        <label class="hint" style="display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" id="follow" checked /> Tự cuộn</label>
+      </div>
+      <div class="list" id="tList"></div>
+      <div class="list" id="vList" hidden></div>
+      <div class="rail-foot"><span id="footInfo">Chưa có transcript</span><span style="display:flex;gap:8px"><button class="btn" id="retryBtn" type="button" hidden>Thử dịch lại</button><button class="btn" id="exportBtn" type="button">Xuất Anki</button></span></div>
+    </aside>
+  </main>
+</div>
+
+<dialog class="dlg" id="settingsDlg" aria-label="Cài đặt">
+  <form method="dialog" id="settingsForm">
+    <h2>Cài đặt dịch thuật</h2>
+    <label class="fld">Nhà cung cấp dịch
+      <select id="setProvider">
+        <option value="google">Google Translate (miễn phí, không cần key)</option>
+        <option value="deepl">DeepL (cần API key)</option>
+        <option value="claude">Claude API (cần API key)</option>
+      </select>
+    </label>
+    <label class="fld">DeepL API key
+      <input id="setDeepl" type="password" autocomplete="off" spellcheck="false" placeholder="Để trống = giữ nguyên" />
+    </label>
+    <label class="fld">Claude API key
+      <input id="setClaude" type="password" autocomplete="off" spellcheck="false" placeholder="Để trống = giữ nguyên" />
+    </label>
+    <label class="fld">Model Claude
+      <input id="setModel" type="text" autocomplete="off" spellcheck="false" />
+    </label>
+    <p class="hint">Key được lưu trên máy này (mã hoá bằng hệ điều hành) và chỉ dùng ở tiến trình chính, không gửi sang giao diện.</p>
+
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0" />
+    <h2>Whisper AI (Nhận dạng ngoại tuyến)</h2>
+    <div id="asrStatusInfo" style="font-size:12.5px;line-height:1.6;color:var(--muted);margin-bottom:12px"></div>
+
+    <div class="dlg-actions">
+      <button class="btn" type="button" id="clearKeys">Xoá key đã lưu</button>
+      <span class="spacer"></span>
+      <button class="btn" type="button" id="setCancel">Đóng</button>
+      <button class="btn primary" type="submit" id="setSave">Lưu</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="pop" id="pop" hidden role="dialog" aria-label="Tra từ">
+  <div class="pop-word" id="popWord"></div>
+  <div class="pop-ipa" id="popIpa"></div>
+  <div class="pop-pos" id="popPos"></div>
+  <div class="pop-mean" id="popMean"></div>
+  <div class="pop-actions">
+    <button class="btn primary" id="popSave" type="button">Lưu từ</button>
+    <button class="btn" id="popClose" type="button">Đóng</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+
